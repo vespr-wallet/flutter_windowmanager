@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'com.android.tools.build:gradle:8.5.1'
     }
 }
 
@@ -23,10 +23,10 @@ apply plugin: 'com.android.library'
 
 android {
     namespace "io.adaptant.labs.flutter_windowmanager"
-    compileSdk 31
+    compileSdk 35
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 26
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
