@@ -9,50 +9,27 @@ import androidx.annotation.NonNull;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
-import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-/** FlutterWindowManagerPlugin */
-public class FlutterWindowManagerPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
+public class FlutterWindowManagerPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware {
+  private MethodChannel channel;
   private Activity activity;
-
-  @SuppressWarnings("unused")
-  public FlutterWindowManagerPlugin() { }
-
-  private FlutterWindowManagerPlugin(Activity activity) {
-    this.activity = activity;
-  }
-
-  /** Plugin registration. */
-  @Deprecated
-  public static void registerWith(Registrar registrar) {
-    new FlutterWindowManagerPlugin(registrar.activity()).registerWith(registrar.messenger());
-  }
-
-  private void registerWith(BinaryMessenger binaryMessenger) {
-    final MethodChannel channel = new MethodChannel(binaryMessenger, "flutter_windowmanager");
-    channel.setMethodCallHandler(this);
-  }
-
 
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-    registerWith(flutterPluginBinding.getBinaryMessenger());
+    channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "flutter_windowmanager");
+    channel.setMethodCallHandler(this);
   }
 
   @Override
-  public void onDetachedFromEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-
+  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    channel.setMethodCallHandler(null);
+    channel = null;
   }
 
-  /**
-   * Validate flag specification against WindowManager.LayoutParams and API levels, as per:
-   * https://developer.android.com/reference/android/view/WindowManager.LayoutParams
-   */
   @SuppressWarnings("deprecation")
   private boolean validLayoutParam(int flag) {
     switch (flag) {
@@ -109,7 +86,8 @@ public class FlutterWindowManagerPlugin implements MethodCallHandler, FlutterPlu
       int flag = (1 << i);
       if ((flags & flag) == 1) {
         if (!validLayoutParam(flag)) {
-          result.error("FlutterWindowManagerPlugin","FlutterWindowManagerPlugin: invalid flag specification: " + Integer.toHexString(flag), null);
+          result.error("FlutterWindowManagerPlugin",
+              "FlutterWindowManagerPlugin: invalid flag specification: " + Integer.toHexString(flag), null);
           return false;
         }
       }
@@ -119,11 +97,16 @@ public class FlutterWindowManagerPlugin implements MethodCallHandler, FlutterPlu
   }
 
   @Override
-  public void onMethodCall(MethodCall call, Result result) {
-    final int flags = call.argument("flags");
-
+  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
     if (activity == null) {
-      result.error("FlutterWindowManagerPlugin", "FlutterWindowManagerPlugin: ignored flag state change, current activity is null", null);
+      result.error("FlutterWindowManagerPlugin",
+          "FlutterWindowManagerPlugin: ignored flag state change, current activity is null", null);
+    }
+
+    final Integer flags = call.argument("flags");
+    if (flags == null) {
+      result.error("FlutterWindowManagerPlugin", "Flags argument is missing", null);
+      return;
     }
 
     if (!validLayoutParams(result, flags)) {
@@ -156,7 +139,7 @@ public class FlutterWindowManagerPlugin implements MethodCallHandler, FlutterPlu
 
   @Override
   public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding activityPluginBinding) {
-    onAttachedToActivity(activityPluginBinding);
+    activity = activityPluginBinding.getActivity();
   }
 
   @Override
